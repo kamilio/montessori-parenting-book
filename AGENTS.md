@@ -13,10 +13,16 @@ Use the `python analyze_chapters.py` to verify lengths
 # Characters
 Use only `characters.md`
 
+# Commits - when asked
+One-line commit messages
+Small commits
+Aim to commit all files even unrelated to current task
+
 # Tools - cli scripts
 No exception handling
 No readme
 No command line arguments unless requested
+No fallbacks
 
 ## Available tools
 
