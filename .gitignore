@@ -1,0 +1,27 @@
+# Environment variables
+.env
+
+# Audio files
+*.mp3
+
+# Generated files
+*.epub
+*.m4b
+audio_metadata.json
+chapters.txt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
