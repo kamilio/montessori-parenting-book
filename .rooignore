@@ -1,0 +1,11 @@
+/archive
+/archive/*/
+.rooignore
+/candidate_data
+/candidate_data/*/
+/projects
+/projects/*/
+/todos-vscode-support
+/todos-vscode-support/*/
+/reviews2025
+/reviews2025/*/

@@ -1,0 +1,9 @@
+{
+    "search.exclude": {
+        "archive/**": true,
+        "candidate_data/**": true,
+        "projects/**": true,
+        "todos-vscode-support/**": true,
+        "reviews2025/**": true
+    }
+}
