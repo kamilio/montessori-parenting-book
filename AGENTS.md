@@ -10,7 +10,8 @@ When rewriting, make changes paragraph by paragraph and put a lot of effort into
 Do not create new file for rewrites, edit existing
 Use the `python analyze_chapters.py` to verify lengths
 
-
+# Characters
+Use only `characters.md`
 
 # Tools - cli scripts
 No exception handling

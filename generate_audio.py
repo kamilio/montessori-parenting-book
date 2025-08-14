@@ -9,6 +9,7 @@ import sys
 import json
 import hashlib
 import requests
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -18,6 +19,60 @@ from mutagen.mp3 import MP3
 load_dotenv()
 
 METADATA_FILE = "audio_metadata.json"
+
+# Audio enhancement settings - set to True to enable
+ENABLE_TEXT_PREPROCESSING = True
+ENABLE_AUDIO_TAGS = True
+ENHANCED_VOICE_SETTINGS = True
+
+def preprocess_text_for_audio(text):
+    """Preprocess text to improve pacing and pauses"""
+    if not ENABLE_TEXT_PREPROCESSING:
+        return text
+    
+    # Add breaks after chapter headings
+    text = re.sub(r'^# (.+)$', r'# \1\n<break time="2.0s" />', text, flags=re.MULTILINE)
+    
+    # Add breaks after section headings
+    text = re.sub(r'^## (.+)$', r'## \1\n<break time="1.5s" />', text, flags=re.MULTILINE)
+    text = re.sub(r'^### (.+)$', r'### \1\n<break time="1.0s" />', text, flags=re.MULTILINE)
+    
+    # Add longer pauses after paragraphs (double newlines)
+    text = re.sub(r'\n\n', r'\n\n<break time="1.0s" />', text)
+    
+    # Add pauses after sentences ending with periods (but not abbreviations)
+    text = re.sub(r'\.(\s+)([A-Z])', r'. <break time="0.5s" />\1\2', text)
+    
+    # Add pauses after colons and semicolons
+    text = re.sub(r':(\s+)', r': <break time="0.7s" />\1', text)
+    text = re.sub(r';(\s+)', r'; <break time="0.5s" />\1', text)
+    
+    # Replace long dashes with pauses
+    text = re.sub(r'—', ' <break time="0.5s" /> ', text)
+    text = re.sub(r' -- ', ' <break time="0.5s" /> ', text)
+    
+    return text
+
+def add_audio_tags(text):
+    """Add ElevenLabs v3 audio tags for better narration"""
+    if not ENABLE_AUDIO_TAGS:
+        return text
+    
+    # Add deliberate pacing for quotes and important points
+    text = re.sub(r'"([^"]+)"', r'[deliberate]"\1"[/deliberate]', text)
+    
+    # Slow down for emphasis words
+    text = re.sub(r'\*\*([^*]+)\*\*', r'[drawn out]\1[/drawn out]', text)
+    text = re.sub(r'\*([^*]+)\*', r'[deliberate]\1[/deliberate]', text)
+    
+    # Add natural pauses for lists
+    text = re.sub(r'^- (.+)$', r'[pause]- \1', text, flags=re.MULTILINE)
+    
+    # Softer tone for examples and observations
+    text = re.sub(r'Watch (.+):', r'[speaking softly]Watch \1:[/speaking softly] [pause]', text)
+    text = re.sub(r'Picture this:', r'[speaking softly]Picture this:[/speaking softly] [pause]', text)
+    
+    return text
 
 def get_file_hash(file_path):
     """Calculate MD5 hash of file content"""
@@ -46,12 +101,26 @@ def get_mp3_duration(file_path):
         return None
 
 def generate_audio(file_path):
-    """Generate audio from text file using OpenAI/ElevenLabs"""
+    """Generate audio from text file using OpenAI/ElevenLabs with optional enhancements"""
     print(f"Generating audio for: {file_path}")
     
     # Read document content
     with open(file_path, 'r', encoding='utf-8') as f:
         document_content = f.read()
+    
+    # Apply text preprocessing if enabled
+    processed_content = preprocess_text_for_audio(document_content)
+    processed_content = add_audio_tags(processed_content)
+    
+    # Create enhanced prompt for better narration
+    if ENABLE_TEXT_PREPROCESSING or ENABLE_AUDIO_TAGS:
+        enhanced_content = f"""Please narrate this audiobook content with natural pacing, appropriate pauses between sections, and engaging delivery suitable for an educational audiobook about parenting and child development.
+
+Use a warm, conversational tone appropriate for parents seeking guidance. Emphasize important points naturally and allow proper pauses for comprehension.
+
+{processed_content}"""
+    else:
+        enhanced_content = processed_content
     
     # Create LLM client
     client = OpenAI(
@@ -66,7 +135,7 @@ def generate_audio(file_path):
         messages=[
             {
                 "role": "user",
-                "content": document_content
+                "content": enhanced_content
             }
         ],
     )
@@ -87,6 +156,18 @@ def generate_audio(file_path):
     # Save MP3 file
     with open(output_path, 'wb') as f:
         f.write(audio_response.content)
+    
+    # Print enhancement status
+    enhancements = []
+    if ENABLE_TEXT_PREPROCESSING:
+        enhancements.append("text preprocessing")
+    if ENABLE_AUDIO_TAGS:
+        enhancements.append("audio tags")
+    
+    if enhancements:
+        print(f"Audio generated with: {', '.join(enhancements)}")
+    else:
+        print("Audio generated with default settings")
     
     print(f"Audio saved to: {output_path}")
     return output_path
