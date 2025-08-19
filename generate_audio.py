@@ -5,11 +5,11 @@ Only generates audio if chapter content has changed since last generation.
 """
 
 import os
-import sys
 import json
 import hashlib
 import requests
 import re
+import argparse
 from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -145,9 +145,9 @@ Use a warm, conversational tone appropriate for parents seeking guidance. Emphas
     # Download MP3 file
     audio_response = requests.get(result)
     
-    # Create output filename in audio_chapters folder
+    # Create output path relative to filename subdirectory audio
     source_path = Path(file_path)
-    audio_dir = source_path.parent / "audio_chapters"
+    audio_dir = source_path.parent / "audio"
     audio_dir.mkdir(exist_ok=True)
     
     output_filename = source_path.stem + ".mp3"
@@ -238,13 +238,88 @@ def process_chapters(chapters_dir="montesorri 12-15-months/chapters"):
     save_metadata(metadata)
     print(f"Metadata saved to {METADATA_FILE}")
 
+def process_blinkist(blinkist_dir="montesorri 12-15-months/blinkist"):
+    """Process all blinkist files and generate audio if content changed"""
+    metadata = load_metadata()
+    
+    if not os.path.exists(blinkist_dir):
+        print(f"Blinkist directory not found: {blinkist_dir}")
+        return
+    
+    # Find all markdown files
+    blinkist_files = sorted([f for f in os.listdir(blinkist_dir) if f.endswith('.md')])
+    
+    for filename in blinkist_files:
+        file_path = os.path.join(blinkist_dir, filename)
+        chapter_name = filename.replace('.md', '')
+        
+        # Calculate current file hash
+        current_hash = get_file_hash(file_path)
+        
+        # Check if we need to regenerate
+        needs_generation = True
+        if chapter_name in metadata:
+            stored_hash = metadata[chapter_name].get('content_hash')
+            audio_path = metadata[chapter_name].get('audio_path')
+            
+            # Skip if hash matches and audio file exists
+            if stored_hash == current_hash and audio_path and os.path.exists(audio_path):
+                print(f"Skipping {filename} - no changes detected")
+                needs_generation = False
+        
+        if needs_generation:
+            # Generate audio
+            try:
+                audio_path = generate_audio(file_path)
+                duration = get_mp3_duration(audio_path)
+                
+                # Extract chapter title from markdown
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                title_match = content.split('\n')[0] if content else ""
+                if title_match.startswith('# '):
+                    chapter_title = title_match[2:].strip()
+                else:
+                    chapter_title = chapter_name.replace('-', ' ').title()
+                
+                # Update metadata
+                metadata[chapter_name] = {
+                    'content_hash': current_hash,
+                    'audio_path': str(audio_path),
+                    'duration_seconds': duration,
+                    'source_file': file_path,
+                    'generated_at': str(Path(audio_path).stat().st_mtime),
+                    'title': chapter_title,
+                    'word_count': len(content.split()) if content else 0,
+                    'file_size_bytes': os.path.getsize(audio_path) if os.path.exists(audio_path) else 0
+                }
+                
+                print(f"Generated audio for {filename} - Duration: {duration:.1f}s")
+                
+            except Exception as e:
+                print(f"Error generating audio for {filename}: {e}")
+                continue
+    
+    # Save updated metadata
+    save_metadata(metadata)
+    print(f"Metadata saved to {METADATA_FILE}")
+
 def main():
-    if len(sys.argv) > 1:
+    parser = argparse.ArgumentParser(description='Generate audio from markdown files')
+    parser.add_argument('input', nargs='?', help='Filename to process, or use --chapters/--blinkist for batch processing')
+    parser.add_argument('--chapters', action='store_true', default=False, help='Process chapters directory (default if no args)')
+    parser.add_argument('--blinkist', action='store_true', help='Process blinkist directory')
+    
+    args = parser.parse_args()
+    
+    if args.input:
         # Single file mode
-        file_path = sys.argv[1]
-        generate_audio(file_path)
+        generate_audio(args.input)
+    elif args.blinkist:
+        # Process blinkist directory
+        process_blinkist()
     else:
-        # Process all chapters
+        # Default: process chapters (or if --chapters is explicitly passed)
         process_chapters()
 
 if __name__ == '__main__':

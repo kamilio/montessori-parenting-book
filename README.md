@@ -14,3 +14,26 @@ A comprehensive guide for Montessori-inspired parenting during the toddler years
 - `make generate-audiobook` - Create M4B audiobook
 - `make clean` - Remove generated files
 - `make help` - Show all commands
+
+## Audio Generation
+
+### Process all chapters (default)
+```bash
+python3 generate_audio.py
+# Processes all .md files in montesorri 12-15-months/chapters/
+# Outputs to montesorri 12-15-months/chapters/audio/
+```
+
+### Process blinkist files
+```bash
+python3 generate_audio.py --blinkist
+# Processes all .md files in montesorri 12-15-months/blinkist/
+# Outputs to montesorri 12-15-months/blinkist/audio/
+```
+
+### Process single file
+```bash
+python3 generate_audio.py path/to/file.md
+# Processes the specified file
+# Outputs to same directory as input file in audio/ subdirectory
+```

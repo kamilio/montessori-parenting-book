@@ -10,7 +10,7 @@ import subprocess
 
 METADATA_FILE = "audio_metadata.json"
 CHAPTERS_FILE = "chapters.txt"
-AUDIO_DIR = "montesorri 12-15-months/audio_chapters"
+AUDIO_DIR = "montesorri 12-15-months/audio"
 
 def load_metadata():
     """Load audio metadata"""
@@ -109,14 +109,14 @@ def create_audiobook(metadata, output_file="montessori-guide.m4b"):
     # Check if cover exists
     cover_path = "montesorri 12-15-months/book-cover.png"
     
-    # Build m4b-tool command
+    # Build m4b-tool command (without --chapters-file for compatibility)
     cmd = [
         "m4b-tool", "merge",
         *mp3_files,
         "--output-file", output_file,
         "--name", "Montessori Parenting Guide (12-15 Months)",
         "--artist", "Montessori Parent",
-        "--chapters-file", CHAPTERS_FILE
+        "--use-filenames-as-chapters"
     ]
     
     if os.path.exists(cover_path):

@@ -2,6 +2,7 @@
 
 import os
 import re
+import sys
 from pathlib import Path
 from typing import Dict, List, Union
 import tiktoken
@@ -78,8 +79,26 @@ def analyze_file(filepath: Path) -> Dict:
     }
 
 
-def find_markdown_files(directory: Path) -> List[Path]:
-    return sorted(directory.rglob('*.md'))
+def find_markdown_files(paths: List[str]) -> List[Path]:
+    """Find markdown files from given paths (files or directories)"""
+    md_files = []
+    
+    for path_str in paths:
+        path = Path(path_str)
+        
+        if not path.exists():
+            print(f"Warning: {path} not found!")
+            continue
+            
+        if path.is_file() and path.suffix == '.md':
+            md_files.append(path)
+        elif path.is_dir():
+            # Find all markdown files in directory recursively
+            md_files.extend(path.rglob('*.md'))
+        else:
+            print(f"Warning: {path} is not a markdown file or directory!")
+    
+    return sorted(md_files)
 
 
 def print_analysis(analysis: Dict, verbose: bool = True):
@@ -103,12 +122,22 @@ def print_analysis(analysis: Dict, verbose: bool = True):
 
 
 def main():
-    base_dir = Path('montesorri 12-15-months')
+    # Parse command line arguments
+    if len(sys.argv) > 1:
+        # Use provided paths
+        paths = sys.argv[1:]
+    else:
+        # Default to the montesorri directory
+        paths = ['montesorri 12-15-months']
     
-    print(f"🔍 Analyzing chapters in '{base_dir}'...\n")
+    print(f"🔍 Analyzing files from: {', '.join(paths)}\n")
     print("=" * 70)
     
-    markdown_files = find_markdown_files(base_dir)
+    markdown_files = find_markdown_files(paths)
+    
+    if not markdown_files:
+        print("No markdown files found!")
+        return
     
     total_words = 0
     total_tokens = 0
